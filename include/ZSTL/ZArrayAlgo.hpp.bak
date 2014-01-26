@@ -1,0 +1,1790 @@
+/*
+	ZArrayAlgo.hpp
+	Author: James Russell <jcrussell@762studios.com>
+	Created: 1/12/2012
+
+	Purpose: 
+
+	Generalized algorithm implementations for use with ZArray.
+
+	License:
+
+	This program is free software. It comes without any warranty, to
+	the extent permitted by applicable law. You can redistribute it
+	and/or modify it under the terms of the Do What The Fuck You Want
+	To Public License, Version 2, as published by Sam Hocevar. See
+	http://sam.zoy.org/wtfpl/COPYING for more details.
+
+*/
+
+#pragma once
+
+#ifndef _ZARRAYALGO_HPP
+#define _ZARRAYALGO_HPP
+
+#include <ZSTL/ZArray.hpp>
+
+namespace ZArrayAlgo
+{
+	/*
+	public ZArrayAlgo<V, T, A>::Accumulate
+	
+	Returns the result of accumulating (via operator +) all the elements in the array.
+	
+	@param V - the initial value type and accumulated type
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to accumulate on
+	@param _initialValue - the initial value for the accumulation
+	@return (V) - the accumulated value
+	*/
+	template <typename V, typename T, typename A>
+	V Accumulate(const ZArray<T, A>& _array, V _initialValue)
+	{
+		return Accumulate(_array, _initialValue, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<V, T, A>::Accumulate
+	
+	Returns the result of accumulating (via operator +) all the elements within a range.
+	
+	@param V - the initial value type and accumulated type
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to accumulate on
+	@param _initialValue - the initial value for the accumulation
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (V) - the accumulated value
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename V, typename T, typename A>
+	V Accumulate(const ZArray<T, A>& _array, V _initialValue, int _start, int _end)
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Accumulate - Cannot accumulate with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+			_initialValue = _initialValue + _array.Data()[i];
+
+		return _initialValue;
+	}
+
+	/*
+	public ZArrayAlgo<V, T, A>::AccumulateIf
+	
+	As accumulate, but only accumulates the value if the provided functor predicate evaluates to true
+	on the element.
+
+	@param F - unary functor [(const T&) -> bool] used to test array[i] for accumulation
+	@param V - the initial value type and accumulated type
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to accumulate on
+	@param _functor - instance of the unary functor F to test with
+	@param _initialValue - the initial value for the accumulation
+	@return (V) - the accumulated value
+	*/
+	template <typename F, typename V, typename T, typename A>
+	V AccumulateIf(const ZArray<T, A>& _array, F _functor, V _initialValue)
+	{
+		return AccumulateIf(_array, _functor, _initialValue, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<V, T, A>::AccumulateIf
+	
+	As accumulate, but only accumulates the value if the provided functor predicate evaluates to true
+	on the element.
+
+	@param F - unary functor [(const T&) -> bool] used to test array[i] for accumulation
+	@param V - the initial value type and accumulated type
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to accumulate on
+	@param _functor - instance of the unary functor F to test with
+	@param _initialValue - the initial value for the accumulation
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (V) - the accumulated value
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename F, typename V, typename T, typename A>
+	V AccumulateIf(const ZArray<T, A>& _array, F _functor, V _initialValue, int _start, int _end )
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::AccumulateIf - Cannot accumulate with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_functor(_array.Data()[i]))
+			{
+				_initialValue = _initialValue + _array.Data()[i];
+			}
+		}
+
+		return _initialValue;
+	}
+
+	/*
+	public ZArrayAlgo<T, A, B>::Append
+	
+	Appends one array to another.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param B - the allocator type of the other array
+	@param _array - the array to append to
+	@param _other - the array to append to the end of _array
+	@return (ZArray<T, A>&) - _array after appending _other
+	*/
+	template <typename T, typename A, typename B>
+	ZArray<T, A>& Append(ZArray<T, A>& _array, const ZArray<T, B>& _other)
+	{ 
+		const int initialSize = _array.Size();
+
+		_array.Resize(_array.Size() + _other.Size());
+
+		for (size_t i = 0; i < _other.Size(); i++)
+			_array.Data()[initialSize + i] = _other.Data()[i];
+
+		return _array;
+	}
+
+	/*
+	public ZArrayAlgo<T, A, B>::Append
+	
+	Appends the specified range of one array to another.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param B - the allocator type of the other array
+	@param _array - the array to append to
+	@param _other - the array to append to the end of _array
+	@param _start - the starting index of _other
+	@param _end - the ending index of _other (exclusive)
+	@return (ZArray<T, A>&) - _array after appending _other
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A, typename B>
+	ZArray<T, A>& Append(ZArray<T, A>& _array, const ZArray<T, B>& _other, int _start, int _end)
+	{ 
+		const size_t start = _other.AbsoluteIndex(_start, _other.Size());
+		const size_t end = _other.AbsoluteIndex(_end, _other.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Append - Cannot append with end < start!");
+		#endif
+
+		const size_t initialSize = _array.Size();
+		const size_t delta = end - start;
+
+		_array.Resize(_array.Size() + delta);
+
+		for (size_t i = 0; i < delta; i++)
+			_array.Data()[initialSize + i] = _other.Data()[start + i];
+
+		return _array;
+	}
+	
+	/*
+	public ZArrayAlgo<F, T, A>::Apply
+	
+	Maps the provided unary functor over the array, mutating in place.
+
+	@param F - unary functor [(T&) -> void] used to operate on array[i]
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to map the function over
+	@param _functor - instance of the unary functor F
+	@return (void)
+	*/
+	template <typename F, typename T, typename A>
+	void Apply(ZArray<T, A>& _array, F _functor)
+	{
+		Apply(_array, _functor, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<F, T, A>::Apply
+	
+	Maps the provided unary functor over the array between the given indices, mutating in place.
+
+	@param F - unary functor [(T&) -> void] used to operate on array[i]
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to map the function over
+	@param _functor - instance of the unary functor F
+	@param _start - the index to start looking at
+	@param _end - the end index (exclusive)
+	@return (void)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename F, typename T, typename A>
+	void Apply(ZArray<T, A>& _array, F _functor, int _start, int _end)
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Map - Cannot map with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+			_functor(_array.Data()[i]);
+	}
+
+	/*
+	public ZArrayAlgo<T, A, B>::Concatenate
+	
+	Concatenates an array to another and returns a new array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param B - the allocator type of the other array
+	@param _array - the first array
+	@param _other - the second array 
+	@return (ZArray<T, A>) - the result of concatenation
+	*/
+	template <typename T, typename A, typename B>
+	ZArray<T, A> Concatenate(const ZArray<T, A>& _array, const ZArray<T, B>& _other) 
+	{
+		ZArray<T, A> ret(_array);
+
+		Append(ret, _other);
+
+		return ret;
+	}
+	
+	/*
+	public ZArrayAlgo<T, A, B>::Concatenate
+	
+	Concatenates sections of two arrays and returns a new array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param B - the allocator type of the other array
+	@param _array - the first array
+	@param _s1 - the start index on the first array
+	@param _e1 - the ending index on the first array (exclusive)
+	@param _other - the array that will be 
+	@param _s2 - the start index on the second array
+	@param _e2 - the end index on the second array (exclusive)
+	@return (ZArray<T, A>)
+	@assert - if _s1 < _e1 or _s2 < _e2
+			  if _s1, _e1, _s2, or _e2 out of bounds 
+	*/
+	template <typename T, typename A, typename B>
+	ZArray<T, A> Concatenate(const ZArray<T, A>& _array, int _s1, int _e1, const ZArray<T, B>& _other, int _s2, int _e2) 
+	{
+		const size_t s1 = _array.AbsoluteIndex(_s1, _array.Size());
+		const size_t e1 = _array.AbsoluteIndex(_e1, _array.Size() + 1);	// 1 to allow indexing of end
+
+		const size_t s2 = _other.AbsoluteIndex(_s2, _other.Size());
+		const size_t e2 = _other.AbsoluteIndex(_e2, _other.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(s1 <= e1, "ZArrayAlgo::Merge - Cannot merge with e1 < s1!");
+		ZSTL_ASSERT(s2 <= e2, "ZArrayAlgo::Merge - Cannot merge with e2 < s2!");
+		#endif
+
+		const size_t delta1 = e1 - s1;
+		const size_t delta2 = e2 - s2;
+
+		const size_t newSize = delta1 + delta2;
+
+		if (newSize == 0)
+			return ZArray<T, A>();
+
+		ZArray<T, A> ret(&_array.Data()[s1], delta1, newSize);
+
+		ret.Resize(newSize);
+
+		for (size_t i = 0; i < delta2; i++)
+			ret.Data()[delta1 + i] = _other.Data()[s2 + i];
+
+		return ret;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Contains
+
+	Determines if the array contains the given value.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to check for the value
+	@param _value - the value to search for
+	@return (bool) - true if found, false otherwise
+	*/
+	template <typename T, typename A>
+	bool Contains(const ZArray<T, A>& _array, const T& _value) 
+	{
+		return Contains(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Contains
+
+	Determines if the array contains the given value between the given indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to check for the value
+	@param _value - the value to search for
+	@param _start - the index to start searching at
+	@param _end - the end index (exclusive)
+	@return (bool) - true if found, false otherwise
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	bool Contains(const ZArray<T, A>& _array, const T& _value, int _start, int _end) 
+	{
+		return FindFirstOf(_array, _value, _start, _end) != ZArray<T, A>::InvalidPos;
+	}
+
+	/*
+	public ZArrayAlgo<T, A, B>::Copy
+	
+	Copies a number of given elements into the provided array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param B - the allocator type of the other array
+	@param _array - the array to copy data into
+	@param _other - the array to copy data from
+	@param _count - the number of elements to copy
+	@return (void)
+	@assert - if _count > array size or other size
+	*/
+	template <typename T, typename A, typename B>
+	void Copy(ZArray<T, A>& _array, const ZArray<T, B>& _other, size_t _count)
+	{
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(_count <= _array.Size(), "ZArrayAlgo::Copy - Cannot copy with count > array size!");
+		ZSTL_ASSERT(_count <= _other.Size(), "ZArrayAlgo::Copy - Cannot copy with count > other size!");
+		#endif
+
+		for (size_t i = 0; i < _count; i++)
+			_array.Data()[i] = _other.Data()[i];
+	}
+
+	/*
+	public ZArrayAlgo<T, A, B>::Copy
+	
+	Copies a number of given elements into the given range of the provided array,
+	from the provided range in the other array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param B - the allocator type of the other array
+	@param _array - the array to copy data into
+	@param _s1 - the starting index to copy to
+	@param _other - the array to copy data from
+	@param _s2 - the starting index to copy from
+	@param _count - the number of elements to copy
+	@return (void)
+	@assert - if _s1 or _s2 out of bounds
+			  if _s1 + _count > array size or _s2 + _count other size
+	*/
+	template <typename T, typename A, typename B>
+	void Copy(ZArray<T, A>& _array, int _s1, const ZArray<T, B>& _other, int _s2, size_t _count)
+	{
+		const size_t s1 = _array.AbsoluteIndex(_s1, _array.Size());
+		_array.AbsoluteIndex(_s1 + _count, _array.Size() + 1);	// 1 to allow indexing of end
+
+		const size_t s2 = _other.AbsoluteIndex(_s2, _other.Size());
+		_other.AbsoluteIndex(_s2 + _count, _other.Size() + 1);	// 1 to allow indexing of end
+
+		for (size_t i = 0; i < _count; i++)
+			_array.Data()[s1 + i] = _other.Data()[s2 + i];
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Count
+
+	Returns the number of occurrences of the given value in the array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to count in
+	@param _value - the value to search for 
+	@return (size_t) - the number of occurrences of _value at and after _index
+	*/
+	template <typename T, typename A>
+	size_t Count(const ZArray<T, A>& _array, const T& _value) 
+	{
+		return Count(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Count
+
+	Returns the number of occurrences of the given value in the given range of the 
+	provided array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to count in
+	@param _value - the value to search for 
+	@param _start - the index to start at
+	@param _end - the ending index (exclusive)
+	@return (size_t) - the number of occurrences of _value at and after _index
+	@assert - if _end < _start
+			  if _start or _end out of bounds
+	*/
+	template <typename T, typename A>
+	size_t Count(const ZArray<T, A>& _array, const T& _value, int _start, int _end) 
+	{ 
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Count - Cannot count with end < start!");
+		#endif
+
+		size_t count = 0;
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_array.Data()[i] == _value)
+				count++;
+		}
+
+		return count;
+	}
+
+	/*
+	public ZArrayAlgo<T, A, B>::Equal
+	
+	Compares if the first n values of two arrays are equal.
+	
+	@param _array - the array to check
+	@param _other - the array to check against
+	@param _count - the number of values to check
+	@return (bool) - true if equivalent, false otherwise
+	@assert - if _count > array size or other size
+	*/
+	template <typename T, typename A, typename B>
+	bool Equal(const ZArray<T, A>& _array, const ZArray<T, B>& _other, size_t _count)
+	{
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(_count <= _array.Size(), "ZArrayAlgo::Equal - Cannot compare with count > array size!");
+		ZSTL_ASSERT(_count <= _other.Size(), "ZArrayAlgo::Equal - Cannot compare with count > other size!");
+		#endif
+
+		for (size_t i = 0; i < _count; i++)
+		{
+			if (!(_array.Data()[i] == _other.Data()[i]))
+				return false;
+		}
+
+		return true;
+	}
+
+	/*
+	public ZArrayAlgo<T, A, B>::Equal
+	
+	Determines if the arrays are equivalent in the given subsection.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param B - the allocator type of the other array
+	@param _array - the array to compare
+	@param _s1 - the starting index to compare from
+	@param _other - the array to compare to
+	@param _s2 - the starting index to compare to
+	@param _count - the number of elements to compare
+	@return (bool) - true if ranges are equivalent, false otherwise
+	@assert - if _s1 or _s2 out of bounds
+			  if _s1 + _count > array size or _s2 + _count other size
+	*/
+	template <typename T, typename A, typename B>
+	bool Equal(const ZArray<T, A>& _array, int _s1, const ZArray<T, B>& _other, int _s2, size_t _count)
+	{
+		const size_t s1 = _array.AbsoluteIndex(_s1, _array.Size());
+		_array.AbsoluteIndex(_s1 + _count, _array.Size() + 1);		// 1 to allow indexing of end
+
+		const size_t s2 = _other.AbsoluteIndex(_s2, _other.Size());
+		_other.AbsoluteIndex(_s2 + _count, _other.Size() + 1);		// 1 to allow indexing of end
+
+		for (size_t i = 0; i < _count; i++)
+		{
+			if (!(_array.Data()[s1 + i] == _other.Data()[s2 + i]))
+				return false;
+		}
+
+		return true;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Excise
+	
+	Removes a section of the provided array and returns a new array containing the 
+	data.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to excise data from
+	@param _start - the index to start at
+	@param _end - the ending index (exclusive)
+	@return (ZArray<T, A>)
+	@assert - if _end < _start
+			  if _start or _end out of bounds
+	*/
+	template <typename T, typename A>
+	ZArray<T, A> Excise(ZArray<T, A>& _array, int _start, int _end)
+	{
+		ZArray<T, A> ret = Slice(_array, _start, _end);
+
+		_array.Erase(_start, _end);
+
+		return ret;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Fill
+	
+	Fills the array full of the given value.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to fill full of values
+	@param _value - the value to fill into the array
+	@return (void)
+	*/
+	template <typename T, typename A>
+	void Fill(ZArray<T, A>& _array, const T& _value)
+	{
+		Fill(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Fill
+	
+	Fills a section of the array full of a given value.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to fill full of values
+	@param _value - the value to fill into the array
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (void)
+	@assert - if _end < _start
+			  if _start or _end out of bounds
+	*/
+	template <typename T, typename A>
+	void Fill(ZArray<T, A>& _array, const T& _value, int _start, int _end)
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Fill - Cannot fill with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+			_array.Data()[i] = _value;		
+	}
+
+	template <typename T, typename A>
+	ZArray<T, A> FindAll(const ZArray<T, A>& _array, const T& _value);
+
+	template <typename T, typename A>
+	ZArray<T, A> FindAll(const ZArray<T, A>& _array, const T& _value, int _start, int _end);
+
+	/*
+	public ZArrayAlgo<F, T, A>::FindIf
+	
+	Finds a value in the array that evaluates a unary functor to true.
+
+	@param F - unary functor [(const T&) -> bool] used to test array[i]
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _functor - instance of the unary functor F to test with
+	@return (int) - the first instance that evaluates to true from _functor (ZArray<T, A>::InvalidPos if not found)
+	*/
+	template <typename F, typename T, typename A>
+	int FindIf(const ZArray<T, A>& _array, F _functor)
+	{
+		return FindIf(_array, _functor, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<F, T, A>::FindIf
+	
+	Finds a value in the provided range of the array that evaluates a unary functor to true.
+
+	@param F - unary functor [(const T&) -> bool] used to test array[i]
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _functor - instance of the unary functor F to test with
+	@param _end - the end index (exclusive)
+	@return (int) - the first instance that evaluates to true from _functor (ZArray<T, A>::InvalidPos if not found)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename F, typename T, typename A>
+	int FindIf(const ZArray<T, A>& _array, F _functor, int _start, int _end)
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Find - Cannot find with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_functor(_array.Data()[i]))
+				return (int)i;
+		}
+
+		return ZArray<T, A>::InvalidPos;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindFirstOf
+
+	Looks for the first occurrence of a value in the given array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to look for
+	@return (int) - the index of the first match (ZArray<T, A>::InvalidPos if not found)
+	*/
+	template <typename T, typename A>
+	int FindFirstOf(const ZArray<T, A>& _array, const T& _value)
+	{
+		return FindFirstOf(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindFirstOf
+
+	Looks for the first occurrence of a value between the specified indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to look for
+	@param _start - the index to start looking at
+	@param _end - the end index (exclusive)
+	@return (int) - the index of the first match (ZArray<T, A>::InvalidPos if not found)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	int FindFirstOf(const ZArray<T, A>& _array, const T& _value, int _start, int _end)
+	{
+		// note that we use the size + 1 to allow for including the just-past-end position
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size() + 1);
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::FindFirstOf - Cannot find with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_array.Data()[i] == _value)
+				return (int)i;
+		}
+
+		return ZArray<T, A>::InvalidPos;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindFirstNotOf
+
+	Looks for the first occurrence of a value that is not the provided value in the given array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to avoid
+	@return (int) - the index of the first non-match (ZArray<T, A>::InvalidPos if not found)
+	*/
+	template <typename T, typename A>
+	int FindFirstNotOf(const ZArray<T, A>& _array, const T& _value)
+	{
+		return FindFirstNotOf(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindFirstNotOf
+
+	Looks for the first occurrence of a value that is not the provided value between 
+	the specified indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to avoid
+	@param _start - the index to start looking at
+	@param _end - the end index (exclusive)
+	@return (int) - the index of the first non-match (ZArray<T, A>::InvalidPos if not found)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	int FindFirstNotOf(const ZArray<T, A>& _array, const T& _value, int _start, int _end)
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::FindFirstNotOf - Cannot find with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (!(_array.Data()[i] == _value))
+				return (int)i;
+		}
+
+		return ZArray<T, A>::InvalidPos;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindLastOf
+	
+	Finds the last occurrence of the specified value in the array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to find 
+	@return (int) - the final occurrence of _value in the array (ZArray<T, A>::InvalidPos if not found)
+	*/
+	template <typename T, typename A>
+	int FindLastOf(const ZArray<T, A>& _array, const T& _value)
+	{
+		return FindLastOf(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindLastOf
+	
+	Finds the last occurrence of the specified value in the array between the given
+	indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to find 
+	@param _start - the index to start looking at
+	@param _end - the end index (exclusive)
+	@return (int) - the final occurrence of _value in the array (ZArray<T, A>::InvalidPos if not found)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	int FindLastOf(const ZArray<T, A>& _array, const T& _value, int _start, int _end)
+	{
+		int idx = ZArray<T, A>::InvalidPos;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::FindLastOf - Cannot find with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_array.Data()[i] == _value)
+				idx = (int)i;
+		}
+
+		return idx;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindLastNotOf
+	
+	Finds the last occurrence of a value that is not the specified value in the array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to avoid 
+	@return (int) - the final occurrence of  a non-match in the array (ZArray<T, A>::InvalidPos if not found)
+	*/
+	template <typename T, typename A>
+	int FindLastNotOf(const ZArray<T, A>& _array, const T& _value)
+	{
+		return FindLastNotOf(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::FindLastNotOf
+	
+	Finds the last occurrence of a value that is not the specified value in the array. between the given
+	indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to find elements in
+	@param _value - the value to avoid 
+	@param _start - the index to start looking at
+	@param _end - the end index (exclusive)
+	@return (int) - the final occurrence of  a non-match in the array (ZArray<T, A>::InvalidPos if not found)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	int FindLastNotOf(const ZArray<T, A>& _array, const T& _value, int _start, int _end)
+	{
+		int idx = ZArray<T, A>::InvalidPos;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::FindLastNotOf - Cannot find with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (!(_array.Data()[i] == _value))
+				idx = (int)i;
+		}
+
+		return idx;
+	}
+
+	template <typename GF, typename T, typename A>
+	void Generate(ZArray<T, A>& _array, GF _generator, size_t _count);
+
+	template <typename GF, typename T, typename A>
+	void Generate(ZArray<T, A>& _array, GF _generator, int _start, int _end);
+
+	template <typename T, typename A>
+	void Heapify(ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	void Heapify(ZArray<T, A>& _array, CF _comparator);
+
+	template <typename CF, typename T, typename A>
+	void Heapify(ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename T, typename A>
+	T& HeapMax(ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	T& HeapMax(ZArray<T, A>& _array, CF _comparator);
+
+	template <typename CF, typename T, typename A>
+	T& HeapMax(ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename T, typename A>
+	T& HeapMin(ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	T& HeapMin(ZArray<T, A>& _array, CF _comparator);
+
+	template <typename CF, typename T, typename A>
+	T& HeapMin(ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename T, typename A>
+	T& HeapPop(ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	T& HeapPop(ZArray<T, A>& _array, CF _comparator);
+
+	template <typename CF, typename T, typename A>
+	T& HeapPop(ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename T, typename A>
+	void HeapPush(ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	void HeapPush(ZArray<T, A>& _array, CF _comparator);
+
+	template <typename CF, typename T, typename A>
+	void HeapPush(ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename T, typename A>
+	void HeapSort(ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	void HeapSort(ZArray<T, A>& _array, CF _comparator);
+
+	template <typename CF, typename T, typename A>
+	void HeapSort(ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename C, typename T, typename A>
+	int LowerBound(const ZArray<T, A>& _array, T& _value);
+
+	template <typename CF, typename T, typename A>
+	int LowerBound(const ZArray<T, A>& _array, T& _value, CF _comparator);
+
+	template <typename C, typename T, typename A>
+	int LowerBound(const ZArray<T, A>& _array, T& _value, int _start, int _end);
+
+	template <typename CF, typename T, typename A>
+	int LowerBound(const ZArray<T, A>& _array, T& _value, CF _comparator, int _start, int _end);
+
+	/*
+	public ZArrayAlgo<F, T, A>::Map
+	
+	Maps the provided functor over the array, returning a transformed array and leaving the
+	original array intact.
+
+	@param F - the unary functor ([T&] -> void) to transform the array with
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to transform
+	@param _functor - instance of the unary functor F to operate on 
+	@return (ZArray<T, A>) the transformed array
+	*/
+	template <typename F, typename T, typename A>
+	ZArray<T, A> Map(const ZArray<T, A>& _array, F _functor)
+	{
+		return Map(_array, _functor, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<F, T, A>::Map
+
+	Maps the provided functor over the array between the given indices, returning a 
+	transformed array and leaving the original array intact.
+
+	@param F - the unary functor ([T&] -> void) to transform the array with
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to transform
+	@param _functor - instance of the unary functor F to operate on 
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (ZArray<T, A>) the transformed array
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename F, typename T, typename A>
+	ZArray<T, A> Map(const ZArray<T, A>& _array, F _functor, int _start, int _end)
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Map - Cannot transform with end < start!");
+		#endif
+
+		ZArray<T, A> ret(&_array.Data()[start], end - start);
+
+		for (size_t i = 0; i < end - start ; i++)
+			_functor(ret.Data()[i]);
+
+		return ret;
+	}
+
+	template <typename T, typename A>
+	int Max(const ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	int Max(const ZArray<T, A>& _array, CF _comparator);
+
+	template <typename T, typename A>
+	int Max(const ZArray<T, A>& _array, int _start, int _end);
+
+	template <typename CF, typename T, typename A>
+	int Max(const ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename T, typename A>
+	int Min(const ZArray<T, A>& _array);
+
+	template <typename CF, typename T, typename A>
+	int Min(const ZArray<T, A>& _array, CF _comparator);
+
+	template <typename T, typename A>
+	int Min(const ZArray<T, A>& _array, int _start, int _end);
+
+	template <typename CF, typename T, typename A>
+	int Min(const ZArray<T, A>& _array, CF _comparator, int _start, int _end);
+
+	template <typename T, typename A, typename B>
+	int Mismatch(const ZArray<T, A>& _array, const ZArray<T, A>& _other);
+
+	template <typename T, typename A, typename B>
+	int Mismatch(const ZArray<T, A>& _array, int _s1, const ZArray<T, A>& _other, int _s2, size_t count);
+
+	/*
+	public ZArrayUtil::Remove
+
+	Removes the first occurrence of the given element in the array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _element - the element to remove
+	@return (int) - the index at which the first occurrence was removed from, ZArray<T>::InvalidPos if no occurrence
+	*/
+	template <typename T, typename A>
+	int Remove(ZArray<T, A>& _array, const T& _element) 
+	{
+		return Remove(_array, _element, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayUtil::Remove
+
+	Removes the first occurrence of the given element in the given range.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _value - the value to remove
+	@param _start - the index to start at
+	@param _end - the ending index (exclusive)
+	@return (int) - the index at which the first occurrence was removed from, ZArray<T>::InvalidPos if no occurrence
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	int Remove(ZArray<T, A>& _array, const T& _value, int _start, int _end) 
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Remove - Cannot remove with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_array.Data()[i] == _value)
+			{
+				_array.Erase(i);
+				return i;
+			}
+		}
+
+		return ZArray<T, A>::InvalidPos;
+	}
+
+	/*
+	public ZArrayUtil::RemoveAll
+
+	Removes all occurrences of the given element from the array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _value - the value to remove
+	@return (int) - number of occurrences removed
+	*/
+	template <typename T, typename A>
+	size_t RemoveAll(ZArray<T, A>& _array, const T& _value)
+	{
+		return RemoveAll(_array, _value, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayUtil::RemoveAll
+
+	Removes all occurrences of the given element in the given range.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _value - the value to remove
+	@param _start - the index to start at
+	@param _end - the ending index (exclusive)
+	@return (int) - number of occurrences removed
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	size_t RemoveAll(ZArray<T, A>& _array, const T& _value, int _start, int _end) 
+	{ 
+		size_t count = 0;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::RemoveAll - Cannot remove all with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_array.Data()[i] == _value)
+			{
+				_array.Erase(i);
+				count++;
+				i--;
+			}
+		}
+
+		return count;
+	}
+
+	/*
+	public ZArrayAlgo<F, T, A>::RemoveIf
+	
+	Removes elements from the array when the provided unary functor evaluates 
+	to true.
+	
+	@param F - unary functor ([const T&] -> bool) used to test elements
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _functor - functor instance of F used to evaluate elements
+	@return (size_t) - the number of elements removed
+	*/
+	template <typename F, typename T, typename A>
+	size_t RemoveIf(ZArray<T, A>& _array, F _functor)
+	{
+		return RemoveIf(_array, _functor, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<F, T, A>::RemoveIf
+	
+	Removes elements from the array in the given range when the provided unary functor evaluates 
+	to true.
+	
+	@param F - unary functor ([const T&] -> bool) used to test elements
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _functor - functor instance of F used to evaluate elements
+	@param _start - the index to start at
+	@param _end - the ending index (exclusive)
+	@return (size_t) - the number of elements removed
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename F, typename T, typename A>
+	size_t RemoveIf(ZArray<T, A>& _array, F _functor, int _start, int _end)
+	{
+		size_t count = 0;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::RemoveAll - Cannot remove all with end < start!");
+		#endif
+
+		size_t toCheck = end - start;
+		size_t i = end-1;
+		while (toCheck > 0)
+		{
+			if (_functor(_array.Data()[i]))
+			{
+				_array.Erase(i);
+				count++;
+			}
+			i--;
+			toCheck--;
+		}
+
+		/*
+		for (size_t i = start; i < end; i++)
+		{
+			if (_functor(_array.Data()[i]))
+			{
+				_array.Erase(i);
+				count++;
+				i--;
+			}
+		}
+		*/
+
+		return count;		
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::RemoveUpTo
+	
+	Removes up to the provided number of occurrences of a value from the array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _value - the value to look for
+	@param _count - the maximum number of times to remove the value
+	@return (size_t) - the number of occurrences removed
+	*/
+	template <typename T, typename A>
+	size_t RemoveUpTo(ZArray<T, A>& _array, const T& _value, size_t _count)
+	{
+		return RemoveUpTo(_array, _value, _count, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::RemoveUpTo
+	
+	Removes up to the provided number of occurrences of a value from the array in
+	the specified range.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to remove elements from
+	@param _value - the value to look for
+	@param _count - the maximum number of times to remove the value
+	@param _start - the index to start at
+	@param _end - the ending index (exclusive)
+	@return (size_t) - the number of occurrences removed
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	size_t RemoveUpTo(ZArray<T, A>& _array, const T& _value, size_t _count, int _start, int _end)
+	{
+		size_t count = 0;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::RemoveAll - Cannot remove all with end < start!");
+		#endif
+
+		for (size_t i = start; i < end && count < _count; i++)
+		{
+			if (_array.Data()[i] == _value)
+			{
+				_array.Erase(i);
+				count++;
+				i--;
+			}
+		}
+
+		return count;
+	}
+	
+	/*
+	public ZArrayAlgo<T, A>::Repeat
+	
+	Builds and returns an array that is constructed with the provided number
+	of the given element.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _value - the value to add to the array
+	@param count - the number of times to add the value
+	@return (ZArray<T, A>) - the constructed array
+	*/
+	template <typename T, typename A >
+	ZArray<T, A> Repeat(const T& _value, size_t count)
+	{
+		ZArray<T, A> ret(count);
+
+		for (size_t i = 0; i < count; i++)
+			ret.PushBack(_value);
+
+		return ret;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Replace
+	
+	Finds and replaces all occurrences of the provided element with another.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to replace values in
+	@param _value - the value to look for
+	@param _newValue - the value to replace with
+	@return (size_t) - the number of values replaced
+	*/
+	template <typename T, typename A>
+	size_t Replace(ZArray<T, A>& _array, const T& _value, const T& _newValue)
+	{
+		return Replace(_array, _value, _newValue, 0, _array.Size());		
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Replace
+	
+	Finds and replaces all occurrences of the provided element with another.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to replace values in
+	@param _value - the value to look for
+	@param _newValue - the value to replace with
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (size_t) - the number of values replaced
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	size_t Replace(ZArray<T, A>& _array, const T& _value, const T& _newValue, int _start, int _end)
+	{
+		size_t count = 0;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Replace - Cannot replace with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_array.Data()[i] == _value)
+			{
+				_array.Data()[i] = _newValue;
+				count++;
+			}
+		}
+
+		return count;
+	}
+
+	/*
+	public ZArrayAlgo<F, T, A>::ReplaceIf
+	
+	Replaces values in the array when the provided unary functor evaluates to true.
+	
+	@param F - unary functor ([const &] -> bool) to use to evaluate elements 
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to replace elements in
+	@param _functor - instance of unary functor F to use
+	@param _newValue - the value to replace with
+	@return (size_t) - the number of replaced elements
+	*/
+	template <typename F, typename T, typename A>
+	size_t ReplaceIf(ZArray<T, A>& _array, F _functor, const T& _newValue)
+	{
+		return ReplaceIf(_array, _functor, _newValue, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<F, T, A>::ReplaceIf
+	
+	Replaces values in the array when the provided unary functor evaluates to true within
+	the given range.
+	
+	@param F - unary functor ([const &] -> bool) to use to evaluate elements 
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to replace elements in
+	@param _functor - instance of unary functor F to use
+	@param _newValue - the value to replace with
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (size_t) - the number of replaced elements
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename F, typename T, typename A>
+	size_t ReplaceIf(ZArray<T, A>& _array, F _functor, const T& _newValue, int _start, int _end)
+	{
+		size_t count = 0;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::ReplaceIf - Cannot replace with end < start!");
+		#endif
+
+		for (size_t i = start; i < end; i++)
+		{
+			if (_functor(_array.Data()[i]))
+			{
+				_array.Data()[i] = _newValue;
+				count++;
+			}
+		}
+
+		return count;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Reverse
+	
+	Reverses an array in place.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to reverse
+	@return (void)
+	*/
+	template <typename T, typename A>
+	void Reverse(ZArray<T, A>& _array)
+	{
+		Reverse(_array, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Reverse
+	
+	Reverses an array in place between the given indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to reverse
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (void)
+	*/
+	template <typename T, typename A>
+	void Reverse(ZArray<T, A>& _array, int _start, int _end)
+	{
+		T temp;
+
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Reverse - Cannot reverse with end < start!");
+		#endif
+
+		for (size_t i, j = start, end; i < j; i++, j--)
+		{
+			temp = _array.Data()[i];
+			_array.Data()[i] = _array.Data()[j];
+			_array.Data()[j] = temp;
+		}
+	}
+
+	template <typename T, typename A>
+	void Rotate(ZArray<T, A>& _array, int _middle);
+
+	template <typename T, typename A>
+	void Rotate(ZArray<T, A>& _array, int _middle, int _start, int _end);
+
+	template <typename T, typename A, typename B>
+	ZArray<T, A> SetDifference(const ZArray<T, A>& _array, const ZArray<T, A>& _other);
+
+	template <typename T, typename A, typename B>
+	ZArray<T, A> SetDifference(const ZArray<T, A>& _array, int _s1, int _e1, const ZArray<T, A>& _other, int _s2, int _e2);
+
+	template <typename T, typename A, typename B>
+	ZArray<T, A> SetIntersection(const ZArray<T, A>& _array, const ZArray<T, A>& _other);
+
+	template <typename T, typename A, typename B>
+	ZArray<T, A> SetIntersection(const ZArray<T, A>& _array, int _s1, int _e1, const ZArray<T, A>& _other, int _s2, int _e2);
+
+	template <typename T, typename A, typename B>
+	ZArray<T, A> SetUnion(const ZArray<T, A>& _array, const ZArray<T, A>& _other);
+
+	template <typename T, typename A, typename B>
+	ZArray<T, A> SetUnion(const ZArray<T, A>& _array, int _s1, int _e1, const ZArray<T, A>& _other, int _s2, int _e2);
+
+	template <typename RF, typename T, typename A>
+	void Shuffle(ZArray<T, A>& _array, RF _functor, size_t _count);
+
+	template <typename RF, typename T, typename A>
+	void Shuffle(ZArray<T, A>& _array, RF _functor, size_t _count, int _start, int _end);
+	
+	/*
+	public ZArrayAlgo::Slice
+
+	Returns a portion of the array indicated by the given indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to slice
+	@param _start - where to begin the slice
+	@param _end - where to end the slice (exclusive)
+	@return (ZArray<T, A>) - an array containing the elements between start and end
+	*/
+	template <typename T, typename A>
+	ZArray<T, A> Slice(const ZArray<T, A>& _array, int _start, int _end) 
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Slice - Cannot slice with end < start!");
+		#endif
+
+		const size_t sliceSize = end - start;
+
+		return ZArray<T, A>(&_array.Data()[start], sliceSize);
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Sort
+
+	Sorts an array in place using the default comparator (uses operator <) and a non-stable 
+	quick sort.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to sort
+	@return (void)
+	*/
+	template <typename T, typename A>
+	void Sort(ZArray<T, A>& _array)
+	{
+		ZComparator<T> comparator;
+		ZArrayQuickSort<T> algorithm;
+
+		Sort(_array, comparator, algorithm, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Sort
+
+	Sorts an array in place using the default comparator (uses operator <) and 
+	uses a non-stable quick sort between the given indices.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to sort
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (void)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	void Sort(ZArray<T, A>& _array, int _start, int _end)
+	{
+		ZComparator<T> comparator;
+		ZArrayQuickSort<T> algorithm;
+
+		Sort(_array, comparator, algorithm, _start, _end);
+	}
+
+	/*
+	public ZArrayAlgo<CF, T, A>::Sort
+
+	Sorts an array in place using the provided comparator and a non-stable quick sort algorithm.
+
+	@param CF - the comparator functor to use [(const T&, const T&) -> int] that compares values
+				returns negative value if first value < second value
+				returns positive value if first value > second value
+				returns 0 if first value == second value
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to sort
+	@param _comparator - the comparator used to sort the contained values
+	@return (void)
+	*/
+	template <typename CF, typename T, typename A>
+	void Sort(ZArray<T, A>& _array, CF _comparator) 
+	{ 
+		ZArrayQuickSort<T> algorithm;
+
+		Sort(_array, _comparator, algorithm, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<CF, AF, T, A>::Sort
+
+	Sorts an array in place using the provided comparator and algorithm.
+
+	@param CF - the comparator functor to use [(const T&, const T&) -> int) that compares values
+				returns negative value if first value < second value
+				returns positive value if first value > second value
+				returns 0 if first value == second value
+	@param AF - the algorithm functor to use [(CF&, T*, size_t) -> void] that sorts the array
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to sort
+	@param _comparator - the comparator used to sort the contained values
+	@param _algorithm - the array sort algorithm to use to sort the array
+	@return (void)
+	*/
+	template <typename CF, typename AF, typename T, typename A>
+	void Sort(ZArray<T, A>& _array, CF _comparator, AF _algorithm) 
+	{ 
+		Sort(_array, _comparator, _algorithm, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<CF, AF, T, A>::Sort
+
+	Sorts an array in place using the provided comparator and algorithm between the given indices.
+
+	@param CF - the comparator functor to use [(const T&, const T&) -> int] that compares values
+				returns negative value if first value < second value
+				returns positive value if first value > second value
+				returns 0 if first value == second value
+	@param AF - the algorithm functor to use [(CF&, T*, size_t) -> void] that sorts the array
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to sort
+	@param _comparator - the comparator used to sort the contained values
+	@param _algorithm - the array sort algorithm to use to sort the array
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (void)
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename CF, typename AF, typename T, typename A>
+	void Sort(ZArray<T, A>& _array, CF _comparator, AF _algorithm, int _start, int _end)
+	{ 
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Sort - Cannot sort with end < start!");
+		#endif
+
+		const size_t sliceSize = end - start;
+
+		_algorithm(_comparator, &_array.Data()[start], sliceSize);
+	}
+
+	template <typename C, typename T, typename A>
+	void SortedInsert(ZArray<T, A>& _array, const T& _value);
+
+	template <typename CF, typename T, typename A>
+	void SortedInsert(ZArray<T, A>& _array, const T& _value, CF _comparator);
+
+	template <typename C, typename T, typename A>
+	void SortedInsert(ZArray<T, A>& _array, const T& _value, int _start, int _end);
+
+	template <typename CF, typename T, typename A>
+	void SortedInsert(ZArray<T, A>& _array, const T& _value, CF& _comparator, int _start, int _end);
+
+	template <typename C, typename T, typename A, typename B>
+	void SortedMerge(ZArray<T, A>& _array, const ZArray<T, A>& _other);
+
+	template <typename CF, typename T, typename A, typename B>
+	void SortedMerge(ZArray<T, A>& _array, const ZArray<T, A>& _other, CF _comparator);
+
+	template <typename C, typename T, typename A, typename B>
+	void SortedMerge(ZArray<T, A>& _array, int _s1, int _e1, const ZArray<T, A>& _other, int _s2, int _e2);
+
+	template <typename CF, typename T, typename A, typename B>
+	void SortedMerge(ZArray<T, A>& _array, int _s1, int _e1, const ZArray<T, A>& _other, int _s2, int _e2, CF _comparator);
+
+	/*
+	public ZArrayAlgo<T, A>::Split
+	
+	Splits the array into two arrays, mutating the provided into the first half and returning the 
+	second half.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to split
+	@param _index - the index to split on (element is included in second half)
+	@return (ZArray<T, A>) - the second half of the array
+	@assert - if _index is out of bounds
+	*/
+	template <typename T, typename A>
+	ZArray<T, A> Split(ZArray<T, A>& _array, int _index)
+	{
+		size_t index = _array.AbsoluteIndex(_index, _array.Size());
+
+		ZArray<T, A> ret(&_array.Data()[index], _array.Size() - index);
+
+		_array.Erase(index, _array.Size());
+
+		return ret;
+	}
+
+	/*
+	public ZArrayUtil::SwapElements
+
+	Swaps the values in two indices to this array.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to swap elements in
+	@param _i - the first value
+	@param _j - the second value
+	@return (void)
+	@assert - if _i or _j are out of bounds
+	*/
+	template <typename T, typename A>
+	void SwapElements(ZArray<T, A>& _array, int _i, int _j)
+	{
+		T temp;
+
+		const size_t i = _array.AbsoluteIndex(_i, _array.Size());
+		const size_t j = _array.AbsoluteIndex(_j, _array.Size());
+
+		temp = _array.Data()[i];
+		_array.Data()[i] = _array.Data()[j];
+		_array.Data()[j] = temp;
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Unique
+	
+	Makes all the values in an array unique.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to make full of unique values
+	@return (size_t) - the number of values removed
+	*/
+	template <typename T, typename A>
+	size_t Unique(ZArray<T, A>& _array)
+	{
+		return Unique(_array, 0, _array.Size());
+	}
+
+	/*
+	public ZArrayAlgo<T, A>::Unique
+	
+	Makes all the values in an array unique within the given range.
+
+	@param T - the type held by the array
+	@param A - the allocator type of the array
+	@param _array - the array to make full of unique values
+	@param _start - the starting index
+	@param _end - the ending index (exclusive)
+	@return (size_t) - the number of values removed
+	@assert - if _end < _start
+			  if _start or _end out of bounds 
+	*/
+	template <typename T, typename A>
+	size_t Unique(ZArray<T, A>& _array, int _start, int _end)
+	{
+		const size_t start = _array.AbsoluteIndex(_start, _array.Size());
+		const size_t end = _array.AbsoluteIndex(_end, _array.Size() + 1);	// 1 to allow indexing of end
+
+		#if !ZSTL_DISABLE_RUNTIME_CHECKS
+		ZSTL_ASSERT(start <= end, "ZArrayAlgo::Unique - Cannot make unique with end < start!");
+		#endif
+
+		size_t removed = 0;
+
+		for (size_t i = start; i < end - removed; i++)
+		{
+			for (size_t j = i + 1; i < end - removed; i++)
+			{
+				if (_array.Data()[i] == _array.Data()[j])
+				{
+					removed++;
+					_array.Erase(j);
+				}
+			}
+		}
+
+		return removed;		
+	}
+
+	template <typename C, typename T, typename A>
+	int UpperBound(const ZArray<T, A>& _array, T& _value);
+
+	template <typename CF, typename T, typename A>
+	int UpperBound(const ZArray<T, A>& _array, T& _value, CF _comparator);
+}
+
+#endif
